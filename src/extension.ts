@@ -27,8 +27,12 @@ import { Anthropic } from "@anthropic-ai/sdk";
 const DafnyVersionTimeoutMs = 5_000;
 let extensionRuntime: ExtensionRuntime | undefined;
 
-export async function activate(context: ExtensionContext): Promise<ExtensionRuntime | undefined> {
-  if(!await checkAndInformAboutInstallation(context)) {
+import * as PromiseAny from "promise.any";
+
+export async function activate(
+  context: ExtensionContext
+): Promise<ExtensionRuntime | undefined> {
+  if (!(await checkAndInformAboutInstallation(context))) {
     return undefined;
   }
   const statusOutput = window.createOutputChannel(
