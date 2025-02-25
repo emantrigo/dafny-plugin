@@ -21,13 +21,14 @@ import { timeout } from "./tools/timeout";
 import { fileIssueURL } from "./ui/statusBarActionView";
 
 import * as vscode from "vscode";
-import { OpenAI } from "openai";
-import { Anthropic } from "@anthropic-ai/sdk";
 
 const DafnyVersionTimeoutMs = 5_000;
 let extensionRuntime: ExtensionRuntime | undefined;
 
 import * as PromiseAny from "promise.any";
+import { AIProviderFactory, AIProviderType } from './ai/factory/aiProviderFactory';
+import { AIProviderConfig } from './ai/factory/aiProviderFactory';
+import { AIConfiguration } from './ai/config/aiConfig';
 
 export async function activate(
   context: ExtensionContext
@@ -53,184 +54,142 @@ export async function restartServer(): Promise<void> {
 }
 
 async function callAI(
-  openAiApiKey: string,
-  claudeApiKey: string,
+  config: ReturnType<typeof AIConfiguration.getConfiguration>,
   prompt: string,
   code: string,
-  provider: string
+  provider: AIProviderType
 ): Promise<string> {
-  if (provider === "openai") {
-    if (!openAiApiKey) {
-      throw new Error(
-        "OpenAI API key is not set. Please configure it in the settings."
-      );
-    }
-    const openai = new OpenAI({
-      apiKey: openAiApiKey,
+  try {
+    const providerConfig = config.providers[provider];
+    const aiProvider = AIProviderFactory.createProvider({
+      type: provider,
+      apiKey: providerConfig.apiKey,
+      baseURL: providerConfig.baseURL
     });
-
-    try {
-      const completion = await openai.chat.completions.create({
-        messages: [
-          { role: "system", content: prompt },
-          { role: "user", content: code },
-        ],
-        model: "gpt-4o",
-      });
-
-      return (
-        completion.choices[0]?.message?.content
-          ?.trim()
-          .replace(/```dafny\n/g, "")
-          .replace(/```/g, "") ?? ""
-      );
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        throw new Error(`OpenAI API error: ${error.message}`);
-      } else {
-        throw new Error("An unknown error occurred while calling OpenAI API");
-      }
+    return await aiProvider.generateCompletion(prompt, code);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      throw new Error(`${provider} API error: ${error.message}`);
     }
-  } else if (provider === "claude") {
-    if (!claudeApiKey) {
-      throw new Error(
-        "Claude API key is not set. Please configure it in the settings."
-      );
-    }
-    const anthropic = new Anthropic({
-      apiKey: claudeApiKey,
-    });
-
-    try {
-      const completion = await anthropic.completions.create({
-        model: "claude-3-opus-20240229",
-        max_tokens_to_sample: 1000,
-        prompt: `${prompt}\n\nHuman: ${code}\n\nAssistant:`,
-      });
-
-      return completion.completion
-        .trim()
-        .replace(/```dafny\n/g, "")
-        .replace(/```/g, "");
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        throw new Error(`Claude API error: ${error.message}`);
-      } else {
-        throw new Error("An unknown error occurred while calling Claude API");
-      }
-    }
-  } else {
-    throw new Error(`Unsupported AI provider: ${provider}`);
+    throw new Error(`An unknown error occurred while calling ${provider} API`);
   }
 }
 
 async function GenerateLoopInvariantsFunction(
-  client: DafnyLanguageClient,
-  openAiApiKey: string,
-  claudeApiKey: string,
-  maxTries: number,
-  aiProvider: string
+  client: DafnyLanguageClient
 ): Promise<void> {
-  vscode.workspace.onDidChangeConfiguration((event) => {
-    if (event.affectsConfiguration("dafny")) {
-      const config = vscode.workspace.getConfiguration("dafny");
-      openAiApiKey = config.get("openAiApiKey") || "";
-      claudeApiKey = config.get("claudeApiKey") || "";
-      maxTries = config.get("numberOfRetries") || 3;
-      aiProvider = config.get("aiProvider") || "openai";
-    }
+  let config = AIConfiguration.getConfiguration();
+  const configDisposable = AIConfiguration.onConfigurationChanged(() => {
+    config = AIConfiguration.getConfiguration();
   });
 
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     vscode.window.showErrorMessage("No active editor found.");
+    configDisposable.dispose();
     return;
   }
 
   let selection = editor.selection;
-  const firstSelection = selection;
   const originalText = editor.document.getText(selection);
-
-  console.log("originalText", originalText);
 
   if (!originalText) {
     vscode.window.showErrorMessage(
       "No text selected. Please select the code you want to process."
     );
+    configDisposable.dispose();
     return;
   }
 
+  const providers = AIConfiguration.getProviderOrder();
+  let currentProviderIndex = providers.indexOf(config.aiProvider);
+  if (currentProviderIndex === -1) currentProviderIndex = 0;
+
   let currentText = originalText;
-  let tries = 0;
   let success = false;
   let lastErrors: string[] = [];
 
-  while (tries < maxTries && !success) {
-    console.log("selection text", editor.document.getText(selection));
-    tries++;
-    console.log("selection", selection);
-    try {
-      let prompt =
-        "Analyze the following Dafny code. Add appropriate loop invariants and fix any errors you find. Do not change the original code structure or functionality. Only add loop invariants and fix errors. Provide the resulting code without any explanations or additional text:";
+  while (currentProviderIndex < providers.length && !success) {
+    const currentProvider = providers[currentProviderIndex];
+    let tries = 0;
 
-      if (lastErrors.length > 0) {
-        prompt +=
-          "\n\nThe previous attempt resulted in the following errors. Please address these specifically:\n" +
-          lastErrors.join("\n");
+    vscode.window.showInformationMessage(`Trying with ${currentProvider} provider...`);
+
+    while (tries < config.maxTries && !success) {
+      tries++;
+      try {
+        let prompt =
+          "Analyze the following Dafny code. Add appropriate loop invariants and fix any errors you find. Do not change the original code structure or functionality. Only add loop invariants and fix errors. Provide the resulting code without any explanations or additional text:";
+
+        if (lastErrors.length > 0) {
+          prompt +=
+            "\n\nThe previous attempt resulted in the following errors. Please address these specifically:\n" +
+            lastErrors.join("\n");
+        }
+
+        const waitMessage = vscode.window.setStatusBarMessage(
+          `Generating loop invariants with ${currentProvider}... (Attempt ${tries}/${config.maxTries})`
+        );
+
+        const aiResponse = await callAI(
+          config,
+          prompt,
+          currentText,
+          currentProvider
+        );
+
+        waitMessage.dispose();
+
+        const formattedResponse = aiResponse.trim().replace(/\n{2,}/g, "\n");
+
+        await editor.edit((editBuilder) => {
+          editBuilder.replace(selection, formattedResponse);
+        });
+
+        selection = editor.selection;
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        const diagnostics = vscode.languages.getDiagnostics(editor.document.uri);
+        const errors = diagnostics.filter(
+          (d) => d.severity === vscode.DiagnosticSeverity.Error
+        );
+
+        if (errors.length === 0) {
+          success = true;
+          vscode.window.showInformationMessage(
+            `Success! Loop invariants added and errors fixed using ${currentProvider} (Attempt ${tries}/${config.maxTries})`
+          );
+        } else {
+          lastErrors = errors.map((e) => e.message);
+          const errorMessages = lastErrors.join("\n");
+          vscode.window.showWarningMessage(
+            `Errors found with ${currentProvider} (Attempt ${tries}/${config.maxTries}):\n${errorMessages}`
+          );
+
+          currentText = editor.document.getText(selection);
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `Error processing Dafny code with ${currentProvider} (Attempt ${tries}/${config.maxTries}): ${error}`
+        );
       }
+    }
 
-      const waitMessage = vscode.window.setStatusBarMessage(
-        `Generating loop invariants... (Attempt ${tries}/${maxTries})`
-      );
-
-      const aiResponse = await callAI(
-        openAiApiKey,
-        claudeApiKey,
-        prompt,
-        currentText,
-        aiProvider
-      );
-
-      waitMessage.dispose();
-
-      const formattedResponse = aiResponse.trim().replace(/\n{2,}/g, "\n");
-
-      await editor.edit((editBuilder) => {
-        editBuilder.replace(selection, formattedResponse);
-      });
-
-      selection = editor.selection;
-
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const diagnostics = vscode.languages.getDiagnostics(editor.document.uri);
-      const errors = diagnostics.filter(
-        (d) => d.severity === vscode.DiagnosticSeverity.Error
-      );
-
-      if (errors.length === 0) {
-        success = true;
+    if (!success) {
+      currentProviderIndex++;
+      if (currentProviderIndex < providers.length) {
         vscode.window.showInformationMessage(
-          `Loop invariants added and errors fixed without changing the original code structure. (Attempt ${tries}/${maxTries})`
+          `${currentProvider} failed after ${config.maxTries} attempts. Trying next provider...`
         );
-      } else {
-        lastErrors = errors.map((e) => e.message);
-        const errorMessages = lastErrors.join("\n");
-        vscode.window.showWarningMessage(
-          `Errors found after modification (Attempt ${tries}/${maxTries}):\n${errorMessages}`
-        );
-
-        currentText = editor.document.getText(selection); // Use the latest response for the next iteration
       }
-    } catch (error) {
-      vscode.window.showErrorMessage(
-        `Error processing Dafny code (Attempt ${tries}/${maxTries}): ${error}`
-      );
     }
   }
 
   if (!success) {
-    // Roll back to the original code
+    vscode.window.showErrorMessage(
+      "All providers failed to generate valid loop invariants. Reverting to original code."
+    );
     try {
       await vscode.commands.executeCommand("workbench.action.files.revert");
       vscode.window.showInformationMessage("Unsaved changes removed.");
@@ -240,6 +199,8 @@ async function GenerateLoopInvariantsFunction(
       );
     }
   }
+
+  configDisposable.dispose();
 }
 
 export class ExtensionRuntime {
@@ -265,12 +226,6 @@ export class ExtensionRuntime {
       },
     });
 
-    const config = vscode.workspace.getConfiguration("dafny");
-    const openAiApiKey = config.get<string>("openAiApiKey") || "";
-    const claudeApiKey = config.get<string>("claudeApiKey") || "";
-    const maxTries = config.get<number>("numberOfRetries") || 3;
-    const aiProvider = config.get<string>("aiProvider") || "openai";
-
     await this.startClientAndWaitForVersion();
     createAndRegisterDafnyIntegration(
       this.installer,
@@ -280,11 +235,7 @@ export class ExtensionRuntime {
     commands.registerCommand(DafnyCommands.RestartServer, restartServer);
     commands.registerCommand(DafnyCommands.GenerateLoopInvariants, () =>
       GenerateLoopInvariantsFunction(
-        this.client!,
-        openAiApiKey,
-        claudeApiKey,
-        maxTries,
-        aiProvider
+        this.client!
       )
     );
     this.statusOutput.appendLine("Dafny is ready");
