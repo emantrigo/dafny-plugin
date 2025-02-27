@@ -4,11 +4,16 @@ import { BaseAIProvider } from './baseAIProvider';
 
 
 export abstract class OpenAIBaseProvider extends BaseAIProvider {
+  protected constructor(apiKey: string, protected readonly baseURL?: string) {
+    super(apiKey);
+  }
+
   protected abstract get modelName(): string;
 
   protected async callAPI(prompt: string, code: string): Promise<string> {
     const openai = new OpenAI({
-      apiKey: this.apiKey
+      apiKey: this.apiKey,
+      baseURL: this.baseURL
     });
 
     try {
