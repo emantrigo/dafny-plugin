@@ -21,9 +21,9 @@ export class AIProviderFactory {
     case 'claude':
       return new ClaudeProvider(config.apiKey);
     case 'deepseek':
-      return new DeepseekProvider(config.apiKey);
+      return new DeepseekProvider(config.apiKey, config.baseURL);
     case 'grok':
-      return new GrokProvider(config.apiKey);
+      return new GrokProvider(config.apiKey, config.baseURL);
     default:
       throw new Error(`Unsupported AI provider: ${config.type}`);
     }
