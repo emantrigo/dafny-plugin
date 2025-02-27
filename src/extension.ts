@@ -117,6 +117,7 @@ async function GenerateLoopInvariantsFunction(
 
     while (tries < config.maxTries && !success) {
       tries++;
+      let waitMessage: vscode.Disposable | undefined;
       try {
         let prompt =
           "Analyze the following Dafny code. Add appropriate loop invariants and fix any errors you find. Do not change the original code structure or functionality. Only add loop invariants and fix errors. Provide the resulting code without any explanations or additional text:";
@@ -127,7 +128,7 @@ async function GenerateLoopInvariantsFunction(
             lastErrors.join("\n");
         }
 
-        const waitMessage = vscode.window.setStatusBarMessage(
+        waitMessage = vscode.window.setStatusBarMessage(
           `Generating loop invariants with ${currentProvider}... (Attempt ${tries}/${config.maxTries})`
         );
 
@@ -137,8 +138,6 @@ async function GenerateLoopInvariantsFunction(
           currentText,
           currentProvider
         );
-
-        waitMessage.dispose();
 
         const formattedResponse = aiResponse.trim().replace(/\n{2,}/g, "\n");
 
@@ -173,6 +172,11 @@ async function GenerateLoopInvariantsFunction(
         vscode.window.showErrorMessage(
           `Error processing Dafny code with ${currentProvider} (Attempt ${tries}/${config.maxTries}): ${error}`
         );
+      } finally {
+        // Ensure the status message is always disposed
+        if (waitMessage) {
+          waitMessage.dispose();
+        }
       }
     }
 
