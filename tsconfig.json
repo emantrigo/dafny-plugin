@@ -20,7 +20,9 @@
     "resolveJsonModule": true
   },
   "include": [
-    "src"
+    "src/**/*",
+    "tests/**/*",
+    "jest.config.ts"
   ],
   "exclude": [
     "node_modules",
