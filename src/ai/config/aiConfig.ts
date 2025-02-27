@@ -19,7 +19,7 @@ export class AIConfiguration {
   private constructor() {}
 
   public static getProviderOrder(): AIProviderType[] {
-    return [ 'claude', 'openai', 'deepseek', 'grok' ];
+    return [ 'deepseek', 'openai', 'claude', 'grok' ];
   }
 
   public static getDefaultProvider(): AIProviderType {
