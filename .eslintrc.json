@@ -17,14 +17,12 @@
     "sourceType": "module",
     "project": "./tsconfig.json"
   },
-  "plugins": [
-    "@typescript-eslint"
-  ],
+  "plugins": ["@typescript-eslint"],
   "rules": {
-    "indent": [ "warn", 2 ],
-    "max-depth": [ "warn", 3 ],
-    "linebreak-style": [ "warn", "unix" ],
-    "max-params": [ "warn", 4 ],
+    "indent": ["warn", 2],
+    "max-depth": ["warn", 3],
+    "linebreak-style": ["warn", "unix"],
+    "max-params": ["warn", 6],
     "no-trailing-spaces": "warn",
     "no-unreachable": "warn",
     "eqeqeq": [
@@ -35,11 +33,11 @@
       }
     ],
     "no-multi-spaces": "warn",
-    "space-before-blocks": [ "warn", "always" ],
-    "space-in-parens": [ "warn", "never" ],
-    "array-bracket-spacing": [ "warn", "always" ],
+    "space-before-blocks": ["warn", "always"],
+    "space-in-parens": ["warn", "never"],
+    "array-bracket-spacing": ["warn", "always"],
     "semi": "off",
-    "@typescript-eslint/semi": [ "warn", "always" ],
+    "@typescript-eslint/semi": ["warn", "always"],
     "no-unused-vars": "off",
     "@typescript-eslint/no-unused-vars": [
       "warn",
@@ -48,9 +46,9 @@
       }
     ],
     "object-curly-spacing": "off",
-    "operator-linebreak": [ "warn", "before" ],
-    "@typescript-eslint/object-curly-spacing": [ "warn", "always" ],
-    "@typescript-eslint/type-annotation-spacing": [ "warn" ],
+    "operator-linebreak": ["warn", "before"],
+    "@typescript-eslint/object-curly-spacing": ["warn", "always"],
+    "@typescript-eslint/type-annotation-spacing": ["warn"],
     "@typescript-eslint/prefer-optional-chain": "warn",
     "@typescript-eslint/no-implicit-any-catch": "warn",
     "@typescript-eslint/strict-boolean-expressions": "warn",
@@ -60,7 +58,7 @@
     "@typescript-eslint/comma-dangle": "warn",
     "comma-spacing": "off",
     "@typescript-eslint/comma-spacing": "warn",
-    "@typescript-eslint/consistent-type-definitions": [ "warn", "interface" ],
+    "@typescript-eslint/consistent-type-definitions": ["warn", "interface"],
     "dot-notation": "off",
     "@typescript-eslint/dot-notation": "warn",
     "@typescript-eslint/explicit-member-accessibility": "warn",
@@ -102,12 +100,12 @@
         }
       }
     ],
-    "@typescript-eslint/method-signature-style": [ "warn", "method" ],
+    "@typescript-eslint/method-signature-style": ["warn", "method"],
     "require-await": "off",
     "@typescript-eslint/require-await": "warn",
     "@typescript-eslint/await-thenable": "warn",
     "quotes": "off",
-    "@typescript-eslint/quotes": [ "warn", "single" ],
+    "@typescript-eslint/quotes": ["warn", "single"],
     "@typescript-eslint/prefer-readonly": "warn",
     "@typescript-eslint/prefer-includes": "warn",
     "@typescript-eslint/prefer-string-starts-ends-with": "warn",
