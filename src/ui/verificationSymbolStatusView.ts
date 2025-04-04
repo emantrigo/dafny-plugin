@@ -14,14 +14,14 @@ import {
   TestItem,
   TestItemCollection,
   TextDocument,
-  TestRunProfileKind,
-} from "vscode";
-import { Range as lspRange, Position as lspPosition } from "vscode-languageclient";
+  TestRunProfileKind
+} from 'vscode';
+import { Range as lspRange, Position as lspPosition } from 'vscode-languageclient';
 import {
   IVerificationSymbolStatusParams,
-  PublishedVerificationStatus,
-} from "../language/api/verificationSymbolStatusParams";
-import { DafnyLanguageClient } from "../language/dafnyLanguageClient";
+  PublishedVerificationStatus
+} from '../language/api/verificationSymbolStatusParams';
+import { DafnyLanguageClient } from '../language/dafnyLanguageClient';
 
 class ResolveablePromise<T> {
   private _resolve: (value: T) => void = () => {};
@@ -78,9 +78,9 @@ export default class VerificationSymbolStatusView {
   private noRunCreationInProgress: Promise<void> = Promise.resolve();
 
   private createController(): TestController {
-    const controller = tests.createTestController("verificationStatus", "Verification Status");
+    const controller = tests.createTestController('verificationStatus', 'Verification Status');
     controller.createRunProfile(
-      "Verify",
+      'Verify',
       TestRunProfileKind.Run,
       async (request) => {
         const items: TestItem[] = this.getItemsInRun(request, controller);
@@ -92,17 +92,17 @@ export default class VerificationSymbolStatusView {
           const runs = items.map((item) =>
             this.languageClient.runVerification({
               position: item.range!.start,
-              textDocument: { uri: item.uri!.toString() },
+              textDocument: { uri: item.uri!.toString() }
             })
           );
-          for (const index in runs) {
+          for(const index in runs) {
             const success = await runs[index];
-            if (success) {
+            if(success) {
               runningItems.push(items[index]);
             }
           }
 
-          if (runningItems.length > 0) {
+          if(runningItems.length > 0) {
             this.createRun(runningItems);
           }
         } finally {
@@ -118,18 +118,18 @@ export default class VerificationSymbolStatusView {
     const allItems: TestItem[] = [];
     controller.items.forEach((item) => allItems.push(item));
     const result: TestItem[] = [];
-    const todo = run.include ? [...run.include] : allItems;
+    const todo = run.include ? [ ...run.include ] : allItems;
     const excludes = run.exclude ? new Set(run.exclude) : new Set<TestItem>();
-    while (todo.length > 0) {
+    while(todo.length > 0) {
       const current = todo.pop()!;
-      if (excludes.has(current)) {
+      if(excludes.has(current)) {
         continue;
       }
 
       current.children.forEach((child) => {
         todo.push(child);
       });
-      if (current.children.size === 0) {
+      if(current.children.size === 0) {
         result.push(current);
       }
     }
@@ -138,15 +138,15 @@ export default class VerificationSymbolStatusView {
 
   private createRun(items: TestItem[]): TestRun {
     const run = this.controller.createTestRun(new TestRunRequest(items));
-    for (const item of items) {
+    for(const item of items) {
       this.itemRuns.set(item.id, { run });
     }
     run.token.onCancellationRequested(() => {
-      if (!this.automaticRunEnd) {
-        for (const item of items) {
+      if(!this.automaticRunEnd) {
+        for(const item of items) {
           this.languageClient.cancelVerification({
             position: item.range!.start,
-            textDocument: { uri: item.uri!.toString() },
+            textDocument: { uri: item.uri!.toString() }
           });
         }
       }
@@ -162,11 +162,11 @@ export default class VerificationSymbolStatusView {
     params.uri = uri.toString();
     const document = await workspace.openTextDocument(uri);
     const rootSymbols = (await commands.executeCommand(
-      "vscode.executeDocumentSymbolProvider",
+      'vscode.executeDocumentSymbolProvider',
       uri
     )) as DocumentSymbol[] | undefined;
     // After this check we may no longer use awaits, because they allow the document to be updated and then our update becomes outdated.
-    if ((params.version ?? 1) !== document.version) {
+    if((params.version ?? 1) !== document.version) {
       return;
     }
     this.updateForSpecificDocumentVersion(params, document, rootSymbols);
@@ -175,7 +175,7 @@ export default class VerificationSymbolStatusView {
   private clearItemsForUri(uri: Uri) {
     const nonUriItems: TestItem[] = [];
     this.controller.items.forEach((item) => {
-      if (item.uri?.toString() !== uri.toString()) {
+      if(item.uri?.toString() !== uri.toString()) {
         nonUriItems.push(item);
       }
     });
@@ -192,7 +192,7 @@ export default class VerificationSymbolStatusView {
     this.clearItemsForUri(document.uri);
 
     let leafItems: TestItem[];
-    if (rootSymbols !== undefined) {
+    if(rootSymbols !== undefined) {
       leafItems = this.updateUsingSymbols(params, controller, rootSymbols);
     } else {
       leafItems = params.namedVerifiables.map((f) => {
@@ -204,7 +204,7 @@ export default class VerificationSymbolStatusView {
           document.uri
         );
       });
-      for (const leafItem of leafItems) {
+      for(const leafItem of leafItems) {
         controller.items.add(leafItem);
       }
     }
@@ -224,13 +224,13 @@ export default class VerificationSymbolStatusView {
       })
       .filter(({ verifiable, testItem }) => {
         return (
-          this.itemStates.get(testItem.id) !== verifiable.status &&
-          (this.itemRuns.get(testItem.id) === undefined ||
-            this.itemRuns.get(testItem.id)?.run.token.isCancellationRequested)
+          this.itemStates.get(testItem.id) !== verifiable.status
+          && (this.itemRuns.get(testItem.id) === undefined
+            || this.itemRuns.get(testItem.id)?.run.token.isCancellationRequested)
         );
       })
       .map((r) => r.testItem);
-    if (runningItemsWithoutRun.length > 0) {
+    if(runningItemsWithoutRun.length > 0) {
       this.createRun(runningItemsWithoutRun);
     }
 
@@ -238,9 +238,9 @@ export default class VerificationSymbolStatusView {
     params.namedVerifiables.forEach((element, index) => {
       const testItem = leafItems[index];
       const itemRunState = this.itemRuns.get(testItem.id)!;
-      if (this.itemStates.get(testItem.id) === element.status) {
+      if(this.itemStates.get(testItem.id) === element.status) {
         const isRunning = itemRunState !== undefined;
-        if (isRunning) {
+        if(isRunning) {
           newItemRuns.set(testItem.id, itemRunState);
         }
         return;
@@ -250,7 +250,7 @@ export default class VerificationSymbolStatusView {
       const itemFinished = () => {
         const remaining = this.runItemsLeft.get(run)! - 1;
         this.itemRuns.delete(testItem.id);
-        if (remaining === 0) {
+        if(remaining === 0) {
           this.runItemsLeft.delete(run);
           this.automaticRunEnd = true;
           run.end();
@@ -261,35 +261,35 @@ export default class VerificationSymbolStatusView {
       };
       const getDuration = () =>
         startedRunningTime === undefined ? undefined : Date.now() - startedRunningTime;
-      switch (element.status) {
-        case PublishedVerificationStatus.Stale: {
-          run.skipped(testItem);
-          itemFinished();
-          break;
-        }
-        case PublishedVerificationStatus.Error:
-          run.failed(testItem, [], getDuration());
-          itemFinished();
-          break;
-        case PublishedVerificationStatus.Correct:
-          run.passed(testItem, getDuration());
-          itemFinished();
-          break;
-        case PublishedVerificationStatus.Running:
-          run.started(testItem);
-          newItemRuns.set(testItem.id, { run, startedRunningTime: Date.now() });
-          break;
-        case PublishedVerificationStatus.Queued:
-          run.enqueued(testItem);
-          newItemRuns.set(testItem.id, itemRunState);
-          break;
+      switch(element.status) {
+      case PublishedVerificationStatus.Stale: {
+        run.skipped(testItem);
+        itemFinished();
+        break;
+      }
+      case PublishedVerificationStatus.Error:
+        run.failed(testItem, [], getDuration());
+        itemFinished();
+        break;
+      case PublishedVerificationStatus.Correct:
+        run.passed(testItem, getDuration());
+        itemFinished();
+        break;
+      case PublishedVerificationStatus.Running:
+        run.started(testItem);
+        newItemRuns.set(testItem.id, { run, startedRunningTime: Date.now() });
+        break;
+      case PublishedVerificationStatus.Queued:
+        run.enqueued(testItem);
+        newItemRuns.set(testItem.id, itemRunState);
+        break;
       }
     });
     this.itemStates = new Map(
-      params.namedVerifiables.map((v, index) => [leafItems[index].id, v.status])
+      params.namedVerifiables.map((v, index) => [ leafItems[index].id, v.status ])
     );
-    for (const [id, oldItem] of this.itemRuns.entries()) {
-      if (!newItemRuns.has(id)) {
+    for(const [ id, oldItem ] of this.itemRuns.entries()) {
+      if(!newItemRuns.has(id)) {
         oldItem.run.end();
       }
     }
@@ -305,15 +305,15 @@ export default class VerificationSymbolStatusView {
     const uri = Uri.parse(params.uri);
 
     const updateMapping = (symbols: DocumentSymbol[], leafRange: Range): TestItem | undefined => {
-      for (const symbol of symbols) {
-        if (symbol.range.contains(leafRange)) {
+      for(const symbol of symbols) {
+        if(symbol.range.contains(leafRange)) {
           let item = itemMapping.get(symbol);
-          if (!item) {
+          if(!item) {
             const itemRange = symbol.selectionRange;
             item = VerificationSymbolStatusView.getItem(symbol.name, itemRange, controller, uri);
             itemMapping.set(symbol, item);
           }
-          if (symbol.selectionRange.isEqual(leafRange)) {
+          if(symbol.selectionRange.isEqual(leafRange)) {
             return item;
           } else {
             return updateMapping(symbol.children, leafRange);
@@ -334,19 +334,19 @@ export default class VerificationSymbolStatusView {
 
     const newRoots = rootSymbols.flatMap((child) => {
       const childItem = itemMapping.get(child);
-      return childItem ? [childItem] : [];
+      return childItem ? [ childItem ] : [];
     });
-    for (const newRoot of newRoots) {
+    for(const newRoot of newRoots) {
       controller.items.add(newRoot);
     }
-    for (const [symbol, item] of itemMapping.entries()) {
+    for(const [ symbol, item ] of itemMapping.entries()) {
       replaceChildren(symbol.children, item.children);
     }
 
     function replaceChildren(childSymbols: DocumentSymbol[], childCollection: TestItemCollection) {
       const newChildren = childSymbols.flatMap((child) => {
         const childItem = itemMapping.get(child);
-        return childItem ? [childItem] : [];
+        return childItem ? [ childItem ] : [];
       });
       childCollection.replace(newChildren);
     }
@@ -373,13 +373,13 @@ export default class VerificationSymbolStatusView {
   }
 
   public getVerifiableRangesForUri(uri: Uri): Range[] {
-    const stack: TestItemCollection[] = [this.controller.items];
+    const stack: TestItemCollection[] = [ this.controller.items ];
     const ranges: Range[] = [];
-    while (stack.length !== 0) {
+    while(stack.length !== 0) {
       const top = stack.pop()!;
       top.forEach((child) => {
-        if (child.uri === uri) {
-          if (child.range !== undefined) {
+        if(child.uri === uri) {
+          if(child.range !== undefined) {
             ranges.push(child.range);
           }
           stack.push(child.children);
