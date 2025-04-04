@@ -83,6 +83,11 @@
           "when": "editorTextFocus && editorLangId == dafny",
           "command": "dafny.generateLoopInvariants",
           "group": "7_Dafny@2"
+        },
+        {
+          "when": "editorTextFocus && editorLangId == dafny",
+          "command": "dafny.generatePrePostConditions",
+          "group": "7_Dafny@2"
         }
       ]
     },
@@ -124,6 +129,11 @@
       {
         "command": "dafny.generateLoopInvariants",
         "key": "ctrl+f9",
+        "when": "editorTextFocus && editorLangId == dafny"
+      },
+      {
+        "command": "dafny.generatePrePostConditions",
+        "key": "ctrl+f10",
         "when": "editorTextFocus && editorLangId == dafny"
       }
     ],
@@ -349,6 +359,10 @@
       {
         "command": "dafny.generateLoopInvariants",
         "title": "Dafny: Generate Loop Invariants"
+      },
+      {
+        "command": "dafny.generatePrePostConditions",
+        "title": "Dafny: Generate Pre/Post Conditions"
       }
     ]
   },
