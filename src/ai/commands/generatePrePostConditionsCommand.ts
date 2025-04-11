@@ -1,6 +1,7 @@
 import { AIProviderType } from '../factory/aiProviderFactory';
 import { DafnyLanguageClient } from '../../language/dafnyLanguageClient';
 import { BaseCodeGenerationCommand } from './baseCodeGenerationCommand';
+import { prePostConditionsPrompt } from './prompts/prePostConditionsPrompt';
 
 export class GeneratePrePostConditionsCommand extends BaseCodeGenerationCommand {
   public constructor(client: DafnyLanguageClient) {
@@ -8,10 +9,7 @@ export class GeneratePrePostConditionsCommand extends BaseCodeGenerationCommand 
   }
 
   protected getPrompt(lastErrors: string[]): string {
-    let prompt
-      = 'Analyze the following Dafny code. Add appropriate preconditions (requires clauses) and '
-      + 'postconditions (ensures clauses) to methods and functions. Do not change the original code structure or functionality. '
-      + 'Only add pre/post conditions and fix any related errors. Provide the resulting code without any explanations or additional text:';
+    let prompt = prePostConditionsPrompt;
 
     if(lastErrors.length > 0) {
       prompt
