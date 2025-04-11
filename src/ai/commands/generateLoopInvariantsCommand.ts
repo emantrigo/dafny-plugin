@@ -1,6 +1,7 @@
 import { AIProviderType } from '../factory/aiProviderFactory';
 import { DafnyLanguageClient } from '../../language/dafnyLanguageClient';
 import { BaseCodeGenerationCommand } from './baseCodeGenerationCommand';
+import { loopInvariantsPrompt } from './prompts/loopInvariantsPrompt';
 
 export class GenerateLoopInvariantsCommand extends BaseCodeGenerationCommand {
   public constructor(client: DafnyLanguageClient) {
@@ -8,10 +9,7 @@ export class GenerateLoopInvariantsCommand extends BaseCodeGenerationCommand {
   }
 
   protected getPrompt(lastErrors: string[]): string {
-    let prompt
-      = 'Analyze the following Dafny code. Add appropriate loop invariants and fix any errors you find. '
-      + 'Do not change the original code structure or functionality. Only add loop invariants and fix errors. '
-      + 'Provide the resulting code without any explanations or additional text:';
+    let prompt = loopInvariantsPrompt;
 
     if(lastErrors.length > 0) {
       prompt
