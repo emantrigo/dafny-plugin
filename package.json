@@ -88,6 +88,11 @@
           "when": "editorTextFocus && editorLangId == dafny",
           "command": "dafny.generatePrePostConditions",
           "group": "7_Dafny@2"
+        },
+        {
+          "when": "editorTextFocus && editorLangId == dafny",
+          "command": "dafny.generateCode",
+          "group": "7_Dafny@2"
         }
       ]
     },
@@ -134,6 +139,11 @@
       {
         "command": "dafny.generatePrePostConditions",
         "key": "ctrl+f10",
+        "when": "editorTextFocus && editorLangId == dafny"
+      },
+      {
+        "command": "dafny.generateCode",
+        "key": "ctrl+f11",
         "when": "editorTextFocus && editorLangId == dafny"
       }
     ],
@@ -363,6 +373,10 @@
       {
         "command": "dafny.generatePrePostConditions",
         "title": "Dafny: Generate Pre/Post Conditions"
+      },
+      {
+        "command": "dafny.generateCode",
+        "title": "Dafny: Generate Code (Smart)"
       }
     ]
   },

@@ -97,6 +97,11 @@ export class ExtensionRuntime {
       }
     );
 
+    commands.registerCommand(DafnyCommands.GenerateCode, async () => {
+      const command = CommandFactory.createGenerateCodeCommand(this.client!);
+      await command.execute();
+    });
+
     this.statusOutput.appendLine("Dafny is ready");
   }
 

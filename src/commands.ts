@@ -10,6 +10,7 @@ export namespace DafnyCommands {
   export const RestartServer = 'dafny.restartServer';
   export const GenerateLoopInvariants = 'dafny.generateLoopInvariants';
   export const GeneratePrePostConditions = 'dafny.generatePrePostConditions';
+  export const GenerateCode = 'dafny.generateCode';
 }
 
 export namespace VSCodeCommands {
