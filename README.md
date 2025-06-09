@@ -71,10 +71,60 @@ After installation, you can start using the new Dafny extension with all its fea
 4. Configure AI settings for generating loop invariants:
    - Open VS Code settings (File > Preferences > Settings or Cmd+, on macOS)
    - Search for "Dafny" in the settings search bar
-   - Find the "Dafny: AI Provider" setting and choose either "openai" or "claude"
-   - Depending on your choice, fill in either:
-     - "Dafny: Open Ai Api Key" with your OpenAI API key, or
-     - "Dafny: Claude Api Key" with your Claude API key
+   - Find the "Dafny: AI Provider" setting and choose between supported providers
+   - Configure your API keys for the providers you want to use:
+     - "Dafny: Open Ai Api Key" for OpenAI
+     - "Dafny: Claude Api Key" for Claude
+     - "Dafny: Deepseek Api Key" for DeepSeek
+     - "Dafny: Grok Api Key" for Grok
    - You can also adjust the "Dafny: Number Of Retries" setting to control how many attempts the AI makes to generate loop invariants
 
-After completing these steps, the Dafny extension will be ready to use with AI-powered loop invariant generation.
+5. (Optional) Configure Firebase Remote Config for centralized configuration management:
+   - Create a `.env` file in the project root (copy from `.env.example`)
+   - Fill in your Firebase configuration:
+     ```
+     FIREBASE_API_KEY=your_api_key
+     FIREBASE_AUTH_DOMAIN=your_auth_domain
+     FIREBASE_PROJECT_ID=your_project_id
+     FIREBASE_APP_ID=your_app_id
+     ```
+   - Set up these keys in your Firebase Remote Config console:
+     - **`llm_max_tries`** (number): Maximum retry attempts (e.g., `3`)
+     - **`llm_provider_order`** (JSON array): Provider priority order
+       ```json
+       ["deepseek", "openai", "claude", "grok"]
+       ```
+     - **`llm_provider_config`** (JSON object): Complete provider configurations
+       ```json
+       {
+         "deepseek": {
+           "modelName": "deepseek-chat",
+           "baseURL": "https://api.deepseek.com"
+         },
+         "openai": {
+           "modelName": "gpt-4",
+           "baseURL": "https://api.openai.com/v1"
+         },
+         "claude": {
+           "modelName": "claude-3-opus-20240229",
+           "baseURL": "https://api.anthropic.com/v1"
+         },
+         "grok": {
+           "modelName": "grok-2-latest",
+           "baseURL": "https://api.x.ai/v1"
+         }
+       }
+       ```
+   - Benefits of Firebase Remote Config:
+     - Instantly update AI provider settings without code changes
+     - A/B test different AI models and configurations
+     - Enable/disable providers based on usage or costs
+     - Centralized control across multiple installations
+
+6. Test your configuration (Development mode only):
+   - When running the extension in development mode, you can test your Firebase setup
+   - Open VS Code's Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+   - Run the command "Dafny: Debug Remote Config" to verify your Firebase setup
+   - Check the Dafny output channel for detailed configuration information
+
+After completing these steps, the Dafny extension will be ready to use with AI-powered code generation features.
