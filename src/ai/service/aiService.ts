@@ -20,7 +20,7 @@ export class AiService {
     provider: AIProviderType
   ): Promise<string> {
     try {
-      const config = AIConfiguration.getConfiguration();
+      const config = await AIConfiguration.getConfiguration();
       const providerConfig = config.providers[provider];
 
       const aiProvider = AIProviderFactory.createProvider({

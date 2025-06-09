@@ -3,10 +3,10 @@ import { AIProviderType } from '../factory/aiProviderFactory';
 import { AIConfiguration } from '../config/aiConfig';
 import { AiService } from '../service/aiService';
 import { DafnyLanguageClient } from '../../language/dafnyLanguageClient';
+import { ModelSelectorView } from '../../ui/modelSelectorView';
 
 export abstract class BaseCodeGenerationCommand {
   protected client: DafnyLanguageClient;
-  protected config: ReturnType<typeof AIConfiguration.getConfiguration>;
   protected configDisposable: vscode.Disposable;
 
   /**
@@ -16,9 +16,8 @@ export abstract class BaseCodeGenerationCommand {
    */
   public constructor(client: DafnyLanguageClient) {
     this.client = client;
-    this.config = AIConfiguration.getConfiguration();
     this.configDisposable = AIConfiguration.onConfigurationChanged(() => {
-      this.config = AIConfiguration.getConfiguration();
+      // Configuration change handled, will be fetched fresh on next use
     });
   }
 
@@ -80,23 +79,30 @@ export abstract class BaseCodeGenerationCommand {
       return;
     }
 
-    const providers = AIConfiguration.getProviderOrder();
-    let currentProviderIndex = providers.indexOf(this.config.aiProvider);
-    if(currentProviderIndex === -1) {
-      currentProviderIndex = 0;
-    }
-
-    const currentText = originalText;
-    const lastErrors: string[] = [];
-
     try {
+      const config = await AIConfiguration.getConfiguration();
+      const modelSelector = ModelSelectorView.getInstance();
+
+      // Get provider order based on model selector mode
+      const providers = modelSelector.getEffectiveProviderOrder();
+      const selectedProvider = modelSelector.getEffectiveProvider();
+
+      let currentProviderIndex = providers.indexOf(selectedProvider);
+      if(currentProviderIndex === -1) {
+        currentProviderIndex = 0;
+      }
+
+      const currentText = originalText;
+      const lastErrors: string[] = [];
+
       const success = await this.tryProvidersSequentially(
         providers,
         currentProviderIndex,
         editor,
         selection,
         currentText,
-        lastErrors
+        lastErrors,
+        config
       );
 
       if(!success) {
@@ -116,7 +122,8 @@ export abstract class BaseCodeGenerationCommand {
     editor: vscode.TextEditor,
     selection: vscode.Selection,
     initialText: string,
-    initialErrors: string[]
+    initialErrors: string[],
+    config: Awaited<ReturnType<typeof AIConfiguration.getConfiguration>>
   ): Promise<boolean> {
     let currentProviderIndex = startIndex;
     const currentText = initialText;
@@ -133,7 +140,8 @@ export abstract class BaseCodeGenerationCommand {
         editor,
         selection,
         currentText,
-        lastErrors
+        lastErrors,
+        config
       );
 
       if(success) {
@@ -143,7 +151,7 @@ export abstract class BaseCodeGenerationCommand {
       currentProviderIndex++;
       if(currentProviderIndex < providers.length) {
         vscode.window.showInformationMessage(
-          `${currentProvider} failed after ${this.config.maxTries} attempts. Trying next provider...`
+          `${currentProvider} failed after ${config.maxTries} attempts. Trying next provider...`
         );
       }
     }
@@ -159,14 +167,15 @@ export abstract class BaseCodeGenerationCommand {
     editor: vscode.TextEditor,
     selection: vscode.Selection,
     initialText: string,
-    initialErrors: string[]
+    initialErrors: string[],
+    config: Awaited<ReturnType<typeof AIConfiguration.getConfiguration>>
   ): Promise<boolean> {
     let tries = 0;
     let currentText = initialText;
     let lastErrors = initialErrors;
     let currentSelection = selection;
 
-    while(tries < this.config.maxTries) {
+    while(tries < config.maxTries) {
       tries++;
       const result = await this.generateAndEvaluateCode(
         provider,
@@ -174,7 +183,8 @@ export abstract class BaseCodeGenerationCommand {
         editor,
         currentSelection,
         currentText,
-        lastErrors
+        lastErrors,
+        config
       );
 
       if(result.success) {
@@ -266,7 +276,8 @@ export abstract class BaseCodeGenerationCommand {
     editor: vscode.TextEditor,
     selection: vscode.Selection,
     currentText: string,
-    lastErrors: string[]
+    lastErrors: string[],
+    config: Awaited<ReturnType<typeof AIConfiguration.getConfiguration>>
   ): Promise<{
     success: boolean,
     selection: vscode.Selection,
@@ -278,7 +289,7 @@ export abstract class BaseCodeGenerationCommand {
     try {
       const prompt = this.getPrompt(lastErrors);
       waitMessage = vscode.window.setStatusBarMessage(
-        this.getStatusMessage(provider, attempt, this.config.maxTries)
+        this.getStatusMessage(provider, attempt, config.maxTries)
       );
 
       const aiResponse = await AiService.callAI(prompt, currentText, provider);
@@ -305,7 +316,7 @@ export abstract class BaseCodeGenerationCommand {
 
       if(errors.length === 0) {
         vscode.window.showInformationMessage(
-          this.getSuccessMessage(provider, attempt, this.config.maxTries)
+          this.getSuccessMessage(provider, attempt, config.maxTries)
         );
         return {
           success: true,
@@ -318,7 +329,7 @@ export abstract class BaseCodeGenerationCommand {
       const newErrors = errors.map((e) => e.message);
       const errorMessages = newErrors.join('\n');
       vscode.window.showWarningMessage(
-        `Errors found with ${provider} (Attempt ${attempt}/${this.config.maxTries}):\n${errorMessages}`
+        `Errors found with ${provider} (Attempt ${attempt}/${config.maxTries}):\n${errorMessages}`
       );
 
       return {
@@ -331,7 +342,7 @@ export abstract class BaseCodeGenerationCommand {
       const errorMessage
         = error instanceof Error ? error.message : String(error);
       vscode.window.showErrorMessage(
-        `Error processing Dafny code with ${provider} (Attempt ${attempt}/${this.config.maxTries}): ${errorMessage}`
+        `Error processing Dafny code with ${provider} (Attempt ${attempt}/${config.maxTries}): ${errorMessage}`
       );
 
       return {
