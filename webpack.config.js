@@ -3,6 +3,7 @@
 'use strict';
 
 const path = require('path');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 //@ts-check
 /** @typedef {import('webpack').Configuration} WebpackConfig **/
@@ -49,6 +50,16 @@ const extensionConfig = {
       }
     ]
   },
+  plugins: [
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: 'node_modules/farmhash-modern/bin/nodejs/farmhash_modern_bg.wasm',
+          to: 'farmhash_modern_bg.wasm'
+        }
+      ]
+    })
+  ],
   devtool: 'nosources-source-map'
 };
 module.exports = [ extensionConfig ];
