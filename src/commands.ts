@@ -11,6 +11,8 @@ export namespace DafnyCommands {
   export const GenerateLoopInvariants = 'dafny.generateLoopInvariants';
   export const GeneratePrePostConditions = 'dafny.generatePrePostConditions';
   export const GenerateCode = 'dafny.generateCode';
+  export const DebugRemoteConfig = 'dafny.debugRemoteConfig';
+  export const ToggleModelSelector = 'dafny.toggleModelSelector';
 }
 
 export namespace VSCodeCommands {

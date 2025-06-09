@@ -9,6 +9,7 @@ import {
   commands,
   Uri,
   CancellationToken,
+  ExtensionMode,
 } from "vscode";
 import { ExtensionConstants, LanguageServerConstants } from "./constants";
 import { DafnyCommands } from "./commands";
@@ -24,6 +25,9 @@ let extensionRuntime: ExtensionRuntime | undefined;
 
 import * as PromiseAny from "promise.any";
 import { CommandFactory } from "./ai/commands/commandFactory";
+import { AIConfiguration } from "./ai/config/aiConfig";
+import { Firebender } from "./ai/service/firebender";
+import { ModelSelectorView } from "./ui/modelSelectorView";
 
 export async function activate(
   context: ExtensionContext
@@ -31,6 +35,18 @@ export async function activate(
   if (!(await checkAndInformAboutInstallation(context))) {
     return undefined;
   }
+  
+  // Initialize Firebase Remote Config
+  try {
+    // Set the extension path for Firebase config
+    const { FirebaseAdminConfigManager } = await import('./ai/config/firebaseAdminConfig');
+    FirebaseAdminConfigManager.setExtensionPath(context.extensionPath);
+    
+    await AIConfiguration.initializeRemoteConfig();
+  } catch (error) {
+    console.warn('Failed to initialize Firebase Remote Config:', error);
+  }
+  
   const statusOutput = window.createOutputChannel(
     ExtensionConstants.ChannelName
   );
@@ -52,6 +68,7 @@ export class ExtensionRuntime {
   private readonly installer: DafnyInstaller;
   private client?: DafnyLanguageClient;
   private languageServerVersion?: string;
+  private modelSelector?: ModelSelectorView;
 
   public constructor(
     private readonly context: ExtensionContext,
@@ -102,6 +119,54 @@ export class ExtensionRuntime {
       await command.execute();
     });
 
+    // Initialize Model Selector View
+    this.modelSelector = ModelSelectorView.getInstance();
+    this.context.subscriptions.push(this.modelSelector);
+
+    // Register model selector toggle command
+    commands.registerCommand(DafnyCommands.ToggleModelSelector, async () => {
+      await this.modelSelector!.toggleMode();
+    });
+
+    // Register debug command for Remote Config (only in development mode)
+    if (this.context.extensionMode === ExtensionMode.Development) {
+      commands.registerCommand(DafnyCommands.DebugRemoteConfig, async () => {
+        const { FirebaseAdminConfigManager } = await import('./ai/config/firebaseAdminConfig');
+        
+        const firebaseManager = FirebaseAdminConfigManager.getInstance();
+        const firebaseDebugInfo = firebaseManager.getConfigDebugInfo();
+        const isAvailable = Firebender.isRemoteConfigAvailable();
+        const enabledProviders = Firebender.getEnabledProviders();
+        const remoteConfigInfo = AIConfiguration.getRemoteConfigDebugInfo();
+        
+        const debugInfo = {
+          firebaseConfiguration: firebaseDebugInfo,
+          isRemoteConfigAvailable: isAvailable,
+          enabledProviders,
+          remoteConfigData: remoteConfigInfo,
+          localVSCodeSettings: {
+            maxRetries: Firebender.getMaxRetries(),
+            timeout: Firebender.getTimeout(),
+            advancedPrompts: Firebender.isAdvancedPromptsEnabled(),
+            contextOptimization: Firebender.isContextOptimizationEnabled()
+          }
+        };
+        
+        // Show a shorter message in the UI
+        window.showInformationMessage(
+          `Firebase Status: ${isAvailable ? 'Connected' : 'Not Available'}\nWorking Dir: ${firebaseDebugInfo.workingDirectory}\nProviders: ${enabledProviders.join(', ')}`
+        );
+        
+        // Log detailed info to console
+        console.log('Firebase Remote Config Debug Info:', JSON.stringify(debugInfo, null, 2));
+        
+        // Also show in output channel for easier viewing
+        this.statusOutput.appendLine('=== Firebase Remote Config Debug Info ===');
+        this.statusOutput.appendLine(JSON.stringify(debugInfo, null, 2));
+        this.statusOutput.show();
+      });
+    }
+
     this.statusOutput.appendLine("Dafny is ready");
   }
 
@@ -122,6 +187,7 @@ export class ExtensionRuntime {
 
   public async dispose(): Promise<void> {
     await this.client?.stop();
+    this.modelSelector?.dispose();
   }
 
   public async startClientAndWaitForVersion() {
