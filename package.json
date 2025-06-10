@@ -1,8 +1,8 @@
 {
   "name": "ide-vscode",
-  "displayName": "Dafny Loop Invariants",
-  "description": "Dafny for Visual Studio Code with AI-powered loop invariants generation",
-  "version": "1.1.0",
+  "displayName": "Dafny AI Assistant",
+  "description": "Dafny for Visual Studio Code with AI-powered code generation and intelligent model selection",
+  "version": "1.2.0",
   "publisher": "Emantrigo",
   "repository": {
     "type": "git",
